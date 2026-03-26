@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Home from './pages/Home'
 import Onboarding from './pages/Onboarding'
+import Chat from './pages/Chat'
 
 function App() {
   const [session, setSession] = useState(null)
@@ -61,6 +62,7 @@ function App() {
         <Route path="/login" element={!session ? <Login /> : <Navigate to={hasSchedule ? "/home" : "/onboarding"} />} />
         <Route path="/signup" element={!session ? <Signup /> : <Navigate to={hasSchedule ? "/home" : "/onboarding"} />} />
         <Route path="/onboarding" element={session ? <Onboarding setHasSchedule={setHasSchedule} /> : <Navigate to="/login" />} />
+        <Route path="/chat" element={session ? <Chat /> : <Navigate to="/login" />} />
         <Route path="/home" element={session ? <Home /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to={!session ? "/login" : hasSchedule ? "/home" : "/onboarding"} />} />
       </Routes>
