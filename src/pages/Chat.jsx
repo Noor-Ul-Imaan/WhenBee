@@ -108,7 +108,6 @@ const response = await fetch('/api/chat', {
 const handleAccept = async (planContent) => {
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Save task
   const { data: task } = await supabase.from('tasks').insert({
     user_id: user.id,
     title: planContent,
@@ -117,22 +116,35 @@ const handleAccept = async (planContent) => {
     status: 'active'
   }).select().single()
 
-  // Parse the scheduled time from the plan
-  const whenLine = planContent.split('\n').find(l => l.toLowerCase().includes('when:'))
+  // Find the When line case insensitively
+  const lines = planContent.split('\n')
+  const whenLine = lines.find(l => l.toLowerCase().includes('when:'))
+  
+  // Match any time pattern like 02:13, 2:35, 14:00
   const timeMatch = whenLine?.match(/(\d{1,2}):(\d{2})/)
 
-  if (task && timeMatch) {
+  if (task && whenLine && timeMatch) {
     const now = new Date()
+    const hours = parseInt(timeMatch[1])
+    const minutes = parseInt(timeMatch[2])
+
+    // Check for AM/PM
+    const isAM = whenLine.toLowerCase().includes('am')
+    const isPM = whenLine.toLowerCase().includes('pm')
+    let adjustedHours = hours
+    if (isPM && hours < 12) adjustedHours = hours + 12
+    if (isAM && hours === 12) adjustedHours = 0
+
     const scheduledFor = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
-      parseInt(timeMatch[1]),
-      parseInt(timeMatch[2])
+      adjustedHours,
+      minutes
     )
 
     // If time has passed today, schedule for tomorrow
-    if (scheduledFor < now) {
+    if (scheduledFor <= now) {
       scheduledFor.setDate(scheduledFor.getDate() + 1)
     }
 
