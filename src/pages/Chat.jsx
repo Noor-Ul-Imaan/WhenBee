@@ -105,19 +105,47 @@ const response = await fetch('/api/chat', {
     setLoading(false)
   }
 
-    const handleAccept = async (planContent) => {
-    const { data: { user } } = await supabase.auth.getUser()
+const handleAccept = async (planContent) => {
+  const { data: { user } } = await supabase.auth.getUser()
 
-    await supabase.from('tasks').insert({
+  // Save task
+  const { data: task } = await supabase.from('tasks').insert({
+    user_id: user.id,
+    title: planContent,
+    conversation_history: messages,
+    plan_details: { raw: planContent },
+    status: 'active'
+  }).select().single()
+
+  // Parse the scheduled time from the plan
+  const whenLine = planContent.split('\n').find(l => l.toLowerCase().includes('when:'))
+  const timeMatch = whenLine?.match(/(\d{1,2}):(\d{2})/)
+
+  if (task && timeMatch) {
+    const now = new Date()
+    const scheduledFor = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      parseInt(timeMatch[1]),
+      parseInt(timeMatch[2])
+    )
+
+    // If time has passed today, schedule for tomorrow
+    if (scheduledFor < now) {
+      scheduledFor.setDate(scheduledFor.getDate() + 1)
+    }
+
+    await supabase.from('notifications').insert({
       user_id: user.id,
-      title: planContent,
-      conversation_history: messages,
-      plan_details: { raw: planContent },
-      status: 'active'
+      task_id: task.id,
+      scheduled_for: scheduledFor.toISOString(),
+      status: 'pending'
     })
-
-    navigate('/home')
   }
+
+  navigate('/home')
+}
 
   const handleModify = () => {
     setMessages(prev => [...prev, {
