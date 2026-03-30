@@ -116,19 +116,18 @@ const handleAccept = async (planContent) => {
     status: 'active'
   }).select().single()
 
-  // Find the When line case insensitively
   const lines = planContent.split('\n')
   const whenLine = lines.find(l => l.toLowerCase().includes('when:'))
-  
-  // Match any time pattern like 02:13, 2:35, 14:00
   const timeMatch = whenLine?.match(/(\d{1,2}):(\d{2})/)
+
+  // Show debug info
+  alert(`task: ${task?.id ? 'saved' : 'FAILED'}\nwhenLine: ${whenLine}\ntimeMatch: ${timeMatch?.[0]}`)
 
   if (task && whenLine && timeMatch) {
     const now = new Date()
     const hours = parseInt(timeMatch[1])
     const minutes = parseInt(timeMatch[2])
 
-    // Check for AM/PM
     const isAM = whenLine.toLowerCase().includes('am')
     const isPM = whenLine.toLowerCase().includes('pm')
     let adjustedHours = hours
@@ -143,17 +142,20 @@ const handleAccept = async (planContent) => {
       minutes
     )
 
-    // If time has passed today, schedule for tomorrow
     if (scheduledFor <= now) {
       scheduledFor.setDate(scheduledFor.getDate() + 1)
     }
 
-    await supabase.from('notifications').insert({
+    const { error } = await supabase.from('notifications').insert({
       user_id: user.id,
       task_id: task.id,
       scheduled_for: scheduledFor.toISOString(),
       status: 'pending'
     })
+
+    alert(`notification insert error: ${error ? error.message : 'none'}`)
+  } else {
+    alert(`skipped - task:${!!task} whenLine:${!!whenLine} timeMatch:${!!timeMatch}`)
   }
 
   navigate('/home')
